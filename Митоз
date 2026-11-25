@@ -1,0 +1,621 @@
+html
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Митоз под микроскопом — Интерактивный практикум (10 класс)</title>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #38bdf8;
+            --accent-hover: #0284c7;
+            --success: #22c55e;
+            --error: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+        }
+
+        /* Экран 1: Микроскоп */
+        #intro-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 24px;
+            max-width: 480px;
+            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s ease;
+        }
+
+        #intro-screen.zoom-in {
+            transform: scale(4);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .badge {
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            margin-bottom: 12px;
+            line-height: 1.2;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 28px;
+            line-height: 1.5;
+        }
+
+        .microscope-btn-wrapper {
+            position: relative;
+            cursor: pointer;
+            margin-bottom: 24px;
+            transition: transform 0.3s ease;
+        }
+
+        .microscope-btn-wrapper:active {
+            transform: scale(0.95);
+        }
+
+        .pulse-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: rgba(56, 189, 248, 0.2);
+            animation: pulse 2s infinite;
+            z-index: 0;
+        }
+
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.8; }
+            70% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; }
+            100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0; }
+        }
+
+        .microscope-svg {
+            position: relative;
+            z-index: 1;
+            width: 170px;
+            height: 170px;
+            filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5));
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #0f172a;
+            border: none;
+            padding: 14px 28px;
+            font-size: 1rem;
+            font-weight: 700;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            max-width: 280px;
+            box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4);
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            color: #fff;
+        }
+
+        /* Экран 2: Лаборатория (Окуляр + Вопросы) */
+        #lab-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 500px;
+            padding: 16px;
+            animation: fadeIn 0.8s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .top-bar {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .progress-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #334155;
+            transition: background 0.3s, transform 0.3s;
+        }
+
+        .dot.active {
+            background: var(--accent);
+            transform: scale(1.2);
+        }
+
+        .dot.done {
+            background: var(--success);
+        }
+
+        /* Окуляр микроскопа */
+        .eyepiece-container {
+            position: relative;
+            width: 270px;
+            height: 270px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #1e293b 0%, #090d16 85%, #000 100%);
+            border: 8px solid #334155;
+            box-shadow: 0 0 30px rgba(56, 189, 248, 0.2), inset 0 0 35px rgba(0, 0, 0, 0.9);
+            overflow: hidden;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .reticle {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0.2;
+            background-image: 
+                linear-gradient(to right, #38bdf8 1px, transparent 1px),
+                linear-gradient(to bottom, #38bdf8 1px, transparent 1px);
+            background-size: 27px 27px;
+            background-position: center center;
+        }
+
+        .zoom-label {
+            position: absolute;
+            bottom: 14px;
+            font-size: 0.75rem;
+            color: rgba(56, 189, 248, 0.6);
+            font-family: monospace;
+            letter-spacing: 1px;
+        }
+
+        #cell-svg {
+            width: 240px;
+            height: 240px;
+            transition: all 0.8s ease-in-out;
+        }
+
+        .cell-breathe {
+            animation: breathe 4s ease-in-out infinite;
+            transform-origin: center;
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+
+        /* Карточка задания */
+        .quiz-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 18px;
+            width: 100%;
+            border: 1px solid #334155;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .stage-tag {
+            display: inline-block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent);
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .question-text {
+            font-size: 1.05rem;
+            font-weight: 600;
+            line-height: 1.4;
+            margin-bottom: 14px;
+        }
+
+        .options-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .option-btn {
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: var(--text-main);
+            padding: 12px 14px;
+            border-radius: 10px;
+            text-align: left;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            border-color: var(--accent);
+            background: rgba(56, 189, 248, 0.1);
+        }
+
+        .option-btn.correct {
+            background: rgba(34, 197, 94, 0.2);
+            border-color: var(--success);
+            color: #86efac;
+        }
+
+        .option-btn.wrong {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: var(--error);
+            color: #fca5a5;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .text-answer {
+            flex: 1;
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: #fff;
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .text-answer:focus {
+            border-color: var(--accent);
+        }
+
+        .submit-input-btn {
+            background: var(--accent);
+            color: #0f172a;
+            border: none;
+            padding: 0 18px;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .feedback-box {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            display: none;
+        }
+
+        .feedback-box.success {
+            display: block;
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid rgba(34, 197, 94, 0.4);
+            color: #bbf7d0;
+        }
+
+        .feedback-box.error {
+            display: block;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #fecaca;
+        }
+
+        .next-btn {
+            margin-top: 12px;
+            width: 100%;
+            background: var(--success);
+            color: #052e16;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            display: none;
+        }
+
+Используйте код с осторожностью.
+/* Финальный экран */
+#result-screen {
+display: none;
+flex-direction: column;
+align-items: center;
+text-align: center;
+padding: 24px;
+max-width: 440px;
+background: var(--card-bg);
+border-radius: 20px;
+border: 1px solid #334155;
+margin: 16px;
+}
+.score-circle {
+width: 110px;
+height: 110px;
+border-radius: 50%;
+border: 6px solid var(--success);
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+margin: 16px 0;
+font-size: 1.8rem;
+font-weight: 800;
+color: var(--success);
+}
+.score-circle span {
+font-size: 0.75rem;
+color: var(--text-muted);
+font-weight: 500;
+}
+
+
+Биология • 10 класс
+Митоз под микроскопом
+Нажми на микроскоп, чтобы настроить фокус и проследить за делением живой клетки в реальном времени.
+Посмотреть в окуляр
+Этап 1 из 5
+
+
+
+
+
+
+
+УВЕЛИЧЕНИЕ: 1000x
+Наблюдение #1
+Загрузка вопроса...
+Продолжить деление →
+
+Исследование завершено
+Деление клетки успешно изучено!
+
+5/5
+верно с 1-й попытки
+Отличная работа! Покажи этот экран учителю.
+Пройти ещё раз
+const stages = [
+{
+hint: "Наблюдение #1 • Подготовка",
+question: "Клетка заметно увеличилась в размерах. В ядре виден рыхлый хроматин, а клеточный центр удвоился. Какой это период и какой сейчас набор хромосом и ДНК?",
+type: "choice",
+options: [
+"Интерфаза (постсинтетический период), набор 2n4c",
+"Профаза митоза, набор 2n2c",
+"Интерфаза (пресинтетический период), набор 2n2c",
+"Метафаза митоза, набор 4n4c"
+],
+correctIndex: 0,
+explanation: "Верно! Это конец интерфазы (G2-период). ДНК уже удвоилась в S-периоде, поэтому каждая хромосома состоит из двух хроматид: 2n4c.",
+svg: <circle cx="120" cy="120" r="85" fill="rgba(56, 189, 248, 0.12)" stroke="#38bdf8" stroke-width="3"/> <circle cx="120" cy="125" r="42" fill="rgba(244, 63, 94, 0.1)" stroke="#94a3b8" stroke-width="2"/> <path d="M100 115 Q120 95 135 120 T105 140 M110 105 Q135 130 115 145" stroke="#f43f5e" stroke-width="2" fill="none" opacity="0.8"/> <g transform="translate(108, 62)"> <rect x="0" y="0" width="10" height="4" fill="#fbbf24"/> <rect x="3" y="-3" width="4" height="10" fill="#fbbf24"/> <rect x="16" y="0" width="10" height="4" fill="#fbbf24"/> <rect x="19" y="-3" width="4" height="10" fill="#fbbf24"/> </g>
+},
+{
+hint: "Наблюдение #2 • Начало деления",
+question: "Посмотри в окуляр: ядерная оболочка растворяется, центриоли расходятся к полюсам, а нити спирализуются в компактные X-образные структуры. Напиши название этой фазы одним словом:",
+type: "input",
+acceptedAnswers: ["профаза", "профаза митоза"],
+placeholder: "Например: анафаза",
+explanation: "Точно! Это профаза — первая фаза митоза. Хромосомы спирализуются, чтобы не запутаться при расхождении.",
+svg: <circle cx="120" cy="120" r="85" fill="rgba(56, 189, 248, 0.12)" stroke="#38bdf8" stroke-width="3"/> <circle cx="120" cy="120" r="45" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 6"/> <g transform="translate(55, 85)"> <rect x="0" y="0" width="12" height="4" fill="#fbbf24"/> <rect x="4" y="-4" width="4" height="12" fill="#fbbf24"/> </g> <g transform="translate(175, 145)"> <rect x="0" y="0" width="12" height="4" fill="#fbbf24"/> <rect x="4" y="-4" width="4" height="12" fill="#fbbf24"/> </g> <g stroke="#f43f5e" stroke-width="3.5" stroke-linecap="round"> <path d="M100 95 L112 110 M112 95 L100 110"/> <path d="M128 92 L140 107 M140 92 L128 107"/> <path d="M98 128 L110 143 M110 128 L98 143"/> <path d="M126 125 L138 140 M138 125 L126 140"/> </g>
+},
+{
+hint: "Наблюдение #3 • Экватор клетки",
+question: "Все хромосомы выстроились строго по экватору клетки, образовав метафазную пластинку. Нити веретена деления прикрепились к их центромерам. Зачем природе нужен этот этап?",
+type: "choice",
+options: [
+"Чтобы произошёл кроссинговер (обмен участками)",
+"Для строго равномерного распределения хроматид между дочерними клетками",
+"Для удвоения количества митохондрий и рибосом",
+"Чтобы разрушить клеточную мембрану"
+],
+correctIndex: 1,
+explanation: "Абсолютно верно! Выстраивание по экватору гарантирует, что каждая будущая клетка получит ровно по одной копии каждой хромосомы. Набор всё ещё 2n4c.",
+svg: <ellipse cx="120" cy="120" rx="90" ry="82" fill="rgba(56, 189, 248, 0.12)" stroke="#38bdf8" stroke-width="3"/> <g transform="translate(46, 118)"> <rect x="0" y="0" width="12" height="4" fill="#fbbf24"/> <rect x="4" y="-4" width="4" height="12" fill="#fbbf24"/> </g> <g transform="translate(182, 118)"> <rect x="0" y="0" width="12" height="4" fill="#fbbf24"/> <rect x="4" y="-4" width="4" height="12" fill="#fbbf24"/> </g> <g stroke="#fbbf24" stroke-width="1.2" opacity="0.5"> <line x1="52" y1="120" x2="120" y2="75"/> <line x1="52" y1="120" x2="120" y2="105"/> <line x1="52" y1="120" x2="120" y2="135"/> <line x1="52" y1="120" x2="120" y2="165"/> <line x1="188" y1="120" x2="120" y2="75"/> <line x1="188" y1="120" x2="120" y2="105"/> <line x1="188" y1="120" x2="120" y2="135"/> <line x1="188" y1="120" x2="120" y2="165"/> </g> <g stroke="#f43f5e" stroke-width="3.5" stroke-linecap="round"> <path d="M114 68 L126 82 M126 68 L114 82"/> <path d="M114 98 L126 112 M126 98 L114 112"/> <path d="M114 128 L126 142 M126 128 L114 142"/> <path d="M114 158 L126 172 M126 158 L114 172"/> </g>
+},
+{
+hint: "Наблюдение #4 • Расхождение",
+question: "Нити веретена сокращаются и растаскивают сестринские хроматиды к разным полюсам. Теперь каждая хроматида — самостоятельная хромосома! Напиши формулу набора хромосом и ДНК во всей клетке в этот момент (например: 2n2c):",
+type: "input",
+acceptedAnswers: ["4n4c", "4n 4c"],
+placeholder: "Введи формулу (латиницей)",
+explanation: "Блестяще! В единой клетке временно находится два диплоидных набора у разных полюсов, а каждая хромосома однохроматидная: 4n4c.",
+svg: <ellipse cx="120" cy="120" rx="102" ry="76" fill="rgba(56, 189, 248, 0.12)" stroke="#38bdf8" stroke-width="3"/> <g transform="translate(36, 118)"> <rect x="0" y="0" width="12" height="4" fill="#fbbf24"/> <rect x="4" y="-4" width="4" height="12" fill="#fbbf24"/> </g> <g transform="translate(192, 118)"> <rect x="0" y="0" width="12" height="4" fill="#fbbf24"/> <rect x="4" y="-4" width="4" height="12" fill="#fbbf24"/> </g> <g stroke="#fbbf24" stroke-width="1.2" opacity="0.5"> <line x1="42" y1="120" x2="82" y2="80"/> <line x1="42" y1="120" x2="82" y2="106"/> <line x1="42" y1="120" x2="82" y2="134"/> <line x1="42" y1="120" x2="82" y2="160"/> <line x1="198" y1="120" x2="158" y2="80"/> <line x1="198" y1="120" x2="158" y2="106"/> <line x1="198" y1="120" x2="158" y2="134"/> <line x1="198" y1="120" x2="158" y2="160"/> </g> <g stroke="#f43f5e" stroke-width="3.5" stroke-linecap="round" fill="none"> <path d="M90 74 L80 80 L90 86"/> <path d="M90 100 L80 106 L90 112"/> <path d="M90 128 L80 134 L90 140"/> <path d="M90 154 L80 160 L90 166"/> </g> <g stroke="#f43f5e" stroke-width="3.5" stroke-linecap="round" fill="none"> <path d="M150 74 L160 80 L150 86"/> <path d="M150 100 L160 106 L150 112"/> <path d="M150 128 L160 134 L150 140"/> <path d="M150 154 L160 160 L150 166"/> </g>
+},
+{
+hint: "Наблюдение #5 • Финал деления",
+question: "Телофаза и цитокинез: вокруг хромосом формируются две ядерные оболочки, а мембрана образует перетяжку. Какими по генетическому составу будут две новые клетки?",
+type: "choice",
+options: [
+"Генетически идентичными друг другу и материнской клетке (2n2c)",
+"С гаплоидным набором хромосом (1n1c)",
+"С изменённым набором генов из-за кроссинговера",
+"Одна клетка получит больше хромосом, чем другая"
+],
+correctIndex: 0,
+explanation: "Идеально! Биологический смысл митоза — образование двух генетически идентичных дочерних клеток с тем же набором хромосом, что был у материнской (2n2c).",
+svg: `
+
+
+`
+}
+];
+let currentStage = 0;
+let firstTryCorrect = 0;
+let attemptedCurrent = false;
+function startLab() {
+const intro = document.getElementById('intro-screen');
+const lab = document.getElementById('lab-screen');
+intro.classList.add('zoom-in');
+setTimeout(() => {
+intro.style.display = 'none';
+lab.style.display = 'flex';
+renderStage();
+}, 650);
+}
+function renderStage() {
+const stage = stages[currentStage];
+attemptedCurrent = false;
+document.getElementById('step-counter').textContent = Этап ${currentStage + 1} из ${stages.length};
+const dots = document.querySelectorAll('.dot');
+dots.forEach((dot, idx) => {
+dot.className = 'dot';
+if (idx < currentStage) dot.classList.add('done');
+if (idx === currentStage) dot.classList.add('active');
+});
+document.getElementById('cell-svg').innerHTML = stage.svg;
+document.getElementById('stage-hint').textContent = stage.hint;
+document.getElementById('question-text').textContent = stage.question;
+const feedback = document.getElementById('feedback-box');
+feedback.className = 'feedback-box';
+feedback.textContent = '';
+document.getElementById('next-btn').style.display = 'none';
+const answerArea = document.getElementById('answer-area');
+answerArea.innerHTML = '';
+if (stage.type === 'choice') {
+const grid = document.createElement('div');
+grid.className = 'options-grid';
+stage.options.forEach((optText, index) => {
+const btn = document.createElement('button');
+btn.className = 'option-btn';
+btn.textContent = optText;
+btn.onclick = () => checkChoice(index, btn);
+grid.appendChild(btn);
+});
+answerArea.appendChild(grid);
+} else if (stage.type === 'input') {
+const group = document.createElement('div');
+group.className = 'input-group';
+const input = document.createElement('input');
+input.type = 'text';
+input.className = 'text-answer';
+input.id = 'user-text-input';
+input.placeholder = stage.placeholder;
+input.addEventListener('keypress', (e) => {
+if (e.key === 'Enter') checkInput();
+});
+const submitBtn = document.createElement('button');
+submitBtn.className = 'submit-input-btn';
+submitBtn.textContent = 'ОК';
+submitBtn.onclick = checkInput;
+group.appendChild(input);
+group.appendChild(submitBtn);
+answerArea.appendChild(group);
+}
+}
+function checkChoice(selectedIndex, btnElement) {
+const stage = stages[currentStage];
+const feedback = document.getElementById('feedback-box');
+const allBtns = document.querySelectorAll('.option-btn');
+if (selectedIndex === stage.correctIndex) {
+if (!attemptedCurrent) firstTryCorrect++;
+btnElement.classList.add('correct');
+allBtns.forEach(b => b.disabled = true);
+feedback.className = 'feedback-box success';
+feedback.textContent = stage.explanation;
+document.getElementById('next-btn').style.display = 'block';
+} else {
+attemptedCurrent = true;
+btnElement.classList.add('wrong');
+btnElement.disabled = true;
+feedback.className = 'feedback-box error';
+feedback.textContent = "Не совсем так. Присмотрись внимательнее к структурам в окуляре и попробуй выбрать другой вариант!";
+}
+}
+function checkInput() {
+const stage = stages[currentStage];
+const inputEl = document.getElementById('user-text-input');
+const feedback = document.getElementById('feedback-box');
+const userVal = inputEl.value.trim().toLowerCase().replace(/ё/g, 'е');
+if (!userVal) return;
+if (stage.acceptedAnswers.includes(userVal)) {
+if (!attemptedCurrent) firstTryCorrect++;
+inputEl.disabled = true;
+inputEl.style.borderColor = 'var(--success)';
+feedback.className = 'feedback-box success';
+feedback.textContent = stage.explanation;
+document.getElementById('next-btn').style.display = 'block';
+} else {
+attemptedCurrent = true;
+inputEl.style.borderColor = 'var(--error)';
+feedback.className = 'feedback-box error';
+feedback.textContent = "Ошибка в термине или формуле. Проверь раскладку (для формулы нужны латинские буквы n и c) и попробуй ещё раз!";
+}
+}
+function nextStage() {
+currentStage++;
+if (currentStage < stages.length) {
+renderStage();
+} else {
+showResults();
+}
+}
+function showResults() {
+document.getElementById('lab-screen').style.display = 'none';
+const resultScreen = document.getElementById('result-screen');
+resultScreen.style.display = 'flex';
+document.getElementById('final-score').textContent = ${firstTryCorrect}/${stages.length};
+const comment = document.getElementById('result-comment');
+if (firstTryCorrect === stages.length) {
+comment.textContent = "Блестяще! Ты безошибочно определил все фазы митоза. Покажи этот экран учителю (оценка «5»).";
+} else if (firstTryCorrect >= 3) {
+comment.textContent = "Хороший результат! Все этапы пройдены. Покажи этот экран учителю.";
+} else {
+comment.textContent = "Ты дошёл до конца, но были ошибки. Можешь пройти практикум ещё раз, чтобы закрепить фазы!";
+}
+}
+
+
+
+<FollowUp>
+Если потребуется добавить **поле для ввода фамилии и имени ученика** на финальный экран или изменить вопросы под ваш учебник, напишите мне — я сразу обновлю код.
+</FollowUp>
